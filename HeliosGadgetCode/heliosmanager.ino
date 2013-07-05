@@ -12,7 +12,7 @@ Helios_Temperature_Sensor_TMP006 tsensor;
 WiFly wifly;
 Helios_LEDS leds;
 
-int lednotification = 13;
+byte lednotification = 13;
 
 unsigned int objecttemp;
 unsigned int ambienttemp;
@@ -47,9 +47,9 @@ void updateLight()
 {
   csensor.Read(&Lux,&Cct);
   delay(1000);
-  int inttime = 400;
-  int gain = 1;
-  int presc = 4;
+  byte inttime = 400;
+  byte gain = 1;
+  byte presc = 4;
   csensor.ReadLow(inttime,gain,presc,&Rood,&Groen,&Blauw,&Wit,&Lux,&Cct);
 }
 
@@ -57,43 +57,37 @@ void setup() {
 	
 	Serial.begin(9600);
         Wire.begin();
-	Serial.println("S");
-        leds.Init();
+
 	pinMode(lednotification, OUTPUT);
         Serial1.begin(9600);
         
 	if (!wifly.begin(&Serial1, &Serial)) {
-          LedWriteText("FB");
+          digitalWrite(lednotification, HIGH);
+          delay(10000);
           wifly.terminal();
         }
 	// First we need to setup WifiHQ
-	Serial.println("Sw");
 	if (!wifly.isAssociated()) {
                 
 		wifly.setSSID(ssid);
-		LedWriteText("A");
                 wifly.setPassphrase(passkey);
-                
 		wifly.enableDHCP();
 		wifly.save();
 		
-		if (wifly.join()) {
-                        Serial.println(ssid);
-			blinkState();
-		} else {
-			wifly.terminal();
+		if (!wifly.join()) {
+                        digitalWrite(lednotification, HIGH);
+                        delay(10000);
+                      	wifly.terminal();
 		}
 		
 	}
-        LedWriteText("J");
-	Serial.println(wifly.getIP(buf, sizeof(buf)));
-	
+
 	wifly.setDeviceID(deviceid);
 	
 	if (wifly.isConnected()) {
-        Serial.println("O");
 		wifly.close();
-    }
+        }
+        
 	wifly.setProtocol(WIFLY_PROTOCOL_TCP);
 	if (wifly.getPort() != 80) {
 		wifly.setPort(80);
@@ -102,19 +96,16 @@ void setup() {
 		delay(3000);
 		
 	}
-        LedWriteText("D");
-        
-	Serial.println("Sc");
         blinkState();
 }
 
-void sendDefault() {
+void sendDefault(char* data) {
 	wifly.println("HTTP/1.1 200 OK");
 	wifly.println("Content-Type: text/html");
 	wifly.println("Transfer-Encoding: chunked");
 	wifly.println();
 	
-	wifly.sendChunkln("OK");
+	wifly.sendChunkln(data);
 	wifly.sendChunkln();
         wifly.sendChunkln();
 }
@@ -132,19 +123,44 @@ void LedWriteText(char* text_to_write) {
   while(leds.LedMatrixBusy()){}
 }
 
-void fetchURL(char* httpbuffer, char* destination) {
+void fetchURL(char* httpbuffer) {
   char * part;
   part = strtok(httpbuffer, " ");
-  int partcounter = 0;
-  char* result = 0;
+  byte partcounter = 0;
+  byte spartcounter = 0;
+  char * spart;
+  char * uri;
+  char * arg;
   while (part != NULL) {
     partcounter++;
     if (partcounter == 2) {
-      destination = part;      
+        // now we split on ?
+        spart = strtok(part, "?");
+        while (spart != NULL) {
+          spartcounter++;
+          if (spartcounter==1) {
+            // the URI is here
+            uri = spart;
+          } else {
+            // the arguments
+            arg = spart;
+          }
+          spart = strtok(NULL, "?");
+        }
+        
+        runActions(uri, arg);
     }
     part = strtok(NULL, " ");
   } 
+}
 
+void runActions(char* uri, char* arg) {
+  if (uri == "/getTemp") {
+    // The arg parameter is not used nor important
+    char result[10];
+    sprintf(result,"%d;%d", objecttemp, ambienttemp);
+    sendDefault(result);
+  }
 }
 
 void loop() {
@@ -154,12 +170,11 @@ void loop() {
 		if (wifly.gets(buf, sizeof(buf))) {
 			// There is content to be read
 			if (strncmp_P(buf, PSTR("GET "), 4) == 0) {
-                                fetchURL(buf, action);
+                                fetchURL(buf);
 				// Get request
 				while (wifly.gets(buf, sizeof(buf)) > 0) {
 					// Do nothing just wait
 				}
-				sendDefault();
 			}
 		}
 		
@@ -168,4 +183,3 @@ void loop() {
         updateAllSensors();
 	
 }
-
