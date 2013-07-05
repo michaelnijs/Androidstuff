@@ -6,13 +6,20 @@ import android.os.Bundle;
 import android.app.Activity;
 import android.view.Menu;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.CheckBox;
 import android.content.*;
+import android.widget.ListView;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 
 public class MainActivity extends Activity {
 
@@ -29,8 +36,12 @@ public class MainActivity extends Activity {
     CheckBox ledtoggler;
 
     Communicator talker;
+    WifiClientFinder wififinder;
+
     SeekBarActivityHandler sbah;
 
+    ListView devices;
+    ArrayList<WifiClient> wificlients = null;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -43,6 +54,7 @@ public class MainActivity extends Activity {
         temperature = (TextView) findViewById(R.id.textView3);
         illumination = (TextView) findViewById(R.id.textView7);
 
+        devices = (ListView) findViewById(R.id.listView);
 
         seekred = (SeekBar) findViewById(R.id.seekBar);
         seekgreen = (SeekBar) findViewById(R.id.seekBar2);
@@ -55,6 +67,38 @@ public class MainActivity extends Activity {
         seekred.setOnSeekBarChangeListener(sbah);
         seekgreen.setOnSeekBarChangeListener(sbah);
         seekblue.setOnSeekBarChangeListener(sbah);
+
+        wififinder = new WifiClientFinder(context);
+
+        ArrayList<String> listcontent = new ArrayList<String>();
+        try {
+            wificlients = wififinder.getClientList();
+            for (int i = 0; i< wificlients.size(); i++) {
+                listcontent.add(wificlients.get(i).getDevice() + " (" + wificlients.get(i).getIP() + ")");
+            }
+
+
+
+        } catch (Exception e) {
+            alertMsg("Wifi AP error", "I could not create a list of clients.");
+            listcontent.add("Failed to fetch");
+        }
+
+        final StableArrayAdapter adapter = new StableArrayAdapter(this, android.R.layout.simple_list_item_1, listcontent);
+        devices.setAdapter(adapter);
+
+        devices.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, final View view, int position, long id) {
+                final String item = (String) parent.getItemAtPosition(position);
+
+                talker.setServerUri(item.split("(")[1].split(")")[0]);
+
+
+            }
+
+
+        });
 
         sendText.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -124,5 +168,33 @@ public class MainActivity extends Activity {
         getMenuInflater().inflate(R.menu.main, menu);
         return true;
     }
-    
+
+
+
+
+    private class StableArrayAdapter extends ArrayAdapter<String> {
+
+        HashMap<String, Integer> mIdMap = new HashMap<String, Integer>();
+
+        public StableArrayAdapter(Context context, int textViewResourceId,
+                                  List<String> objects) {
+            super(context, textViewResourceId, objects);
+            for (int i = 0; i < objects.size(); ++i) {
+                mIdMap.put(objects.get(i), i);
+            }
+        }
+
+        @Override
+        public long getItemId(int position) {
+            String item = getItem(position);
+            return mIdMap.get(item);
+        }
+
+        @Override
+        public boolean hasStableIds() {
+            return true;
+        }
+
+    }
+
 }

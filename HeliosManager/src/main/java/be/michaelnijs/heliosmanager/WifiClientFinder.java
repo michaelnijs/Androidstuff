@@ -40,7 +40,7 @@ public class WifiClientFinder {
     private boolean isWifiEnabled() {
         try {
             Method m = globalWifiManager.getClass().getMethod("getWifiApState");
-            int tmp = ((Integer)method.invoke(globalWifiManager));
+            int tmp = ((Integer)m.invoke(globalWifiManager));
 
             if (WIFI_AP_STATE.class.getEnumConstants()[tmp] == WIFI_AP_STATE.WIFI_AP_STATE_ENABLED) {
                return true;
@@ -61,16 +61,16 @@ public class WifiClientFinder {
 
         try {
             result = new ArrayList<WifiClient>();
-            br = new BufferedReader(new FileReader("/proc/net/arp"));
+            r = new BufferedReader(new FileReader("/proc/net/arp"));
 
             String line;
-            while ((line = br.readline()) != null) {
+            while ((line = r.readLine()) != null) {
                 // More lines to read
                 String[] parts = line.split(" +");
                 if ((parts != null) && (parts.length >= 4)) {
                     String mac = parts[3];
                     if (mac.matches("..:..:..:..:..:..")) {
-                        // Fetch the ip and if you can reach it!
+                        // Can you reach it?
                         boolean isReach = InetAddress.getByName(parts[0]).isReachable(this.timeout);
                         if (isReach) {
                             result.add(new WifiClient(parts[0], parts[3], parts[5], isReach));

@@ -20,7 +20,7 @@ public class WifiClient {
     public String getIP(){
         return this.ipaddress;
     }
-    public String setIP(String ip) {
+    public void setIP(String ip) {
         this.ipaddress = ip;
     }
     public String getMac() {
