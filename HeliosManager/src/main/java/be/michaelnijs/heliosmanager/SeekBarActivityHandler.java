@@ -4,7 +4,7 @@ import android.app.Activity;
 import android.widget.SeekBar;
 
 /**
- * Created by micmast on 7/1/13.
+ * Created by Michael on 7/1/13.
  */
 public class SeekBarActivityHandler implements SeekBar.OnSeekBarChangeListener {
 
